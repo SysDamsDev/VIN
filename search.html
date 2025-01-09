@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta de Vehículos</title>
+    <meta name="description" content="Consulta de vehículos en Costa Rica utilizando el número de placa.">
+    <meta name="keywords" content="vehículos, consulta, Costa Rica, VIN, placa">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://corsproxy.io;">
+    <style>
+        :root {
+            --bg-color: #111111;
+            --surface-color: #1a1a1a;
+            --surface-color-hover: #222222;
+            --primary-color: #43d58e;
+            --text-color: #e0e0e0;
+            --text-muted: #888888;
+            --error-color: #ff4444;
+            --radius-sm: 0.5rem;
+            --radius-md: 0.75rem;
+            --radius-lg: 1rem;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+            position: relative;
+            padding-bottom: 2.5rem;
+        }
+
+        .barra-logo {
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .sysdams-text {
+            color: #43d58e;  /* Verde */
+        }
+
+        .period-text {
+            color: #FFD700;  /* Amarillo */
+        }
+
+        .form-container, .card, .search-history, .error-message {
+            width: 32rem;
+            margin: 0 auto;
+        }
+
+        .form-container {
+            padding: 1.5rem;
+            background-color: var(--surface-color);
+            border-radius: var(--radius-lg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 32rem;
+        }
+
+        .search-form {
+            display: flex;
+            gap: 0.75rem;
+            width: 100%;
+            max-width: 28rem;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary-color);
+            color: var(--bg-color);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 7rem;
+            justify-content: center;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button i {
+            font-size: 0.875rem;
+        }
+
+        .loading {
+            display: none;
+            width: 2rem;
+            height: 2rem;
+            border: 3px solid var(--surface-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            margin: 1rem auto;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .card {
+            width: 32rem;
+            background-color: var(--surface-color);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin: 1rem auto 0;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            height: 4.5rem;
+            background-color: rgba(255, 255, 255, 0.02);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0;
+            line-height: 1.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 90%;
+        }
+
+        .vehicle-info {
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            padding: 1.25rem;
+            background-color: rgba(255, 255, 255, 0.02);
+            border-radius: var(--radius-sm);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease;
+        }
+
+        .info-item:hover {
+            transform: translateY(-2px);
+        }
+
+        .info-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-label i {
+            font-size: 1rem;
+            color: var(--primary-color);
+        }
+
+        .info-value {
+            font-size: 1.125rem;
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .search-history {
+            width: 32rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem auto 0;
+            justify-content: center;
+        }
+
+        .history-item {
+            padding: 0.5rem 1rem;
+            background-color: var(--surface-color);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-sm);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .history-item:hover {
+            background-color: var(--surface-color-hover);
+            transform: translateY(-1px);
+        }
+
+        .history-item:active {
+            transform: translateY(0);
+        }
+
+        .history-item i {
+            font-size: 0.875rem;
+            color: var (--text-muted);
+        }
+
+        .clear-button {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 3.5rem;
+            height: 3.5rem;
+            background-color: var(--surface-color);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+            color: var(--text-color);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            font-size: 1.25rem;
+            backdrop-filter: blur(8px);
+        }
+
+        .clear-button:hover {
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+            background-color: var(--surface-color-hover);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .clear-button:active {
+            transform: translateY(0) scale(1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .error-message {
+            width: 32rem;
+            margin: 1rem auto 0;
+            padding: 1rem 1.25rem;
+            background-color: rgba(255, 68, 68, 0.1);
+            border-left: 3px solid var(--error-color);
+            border-radius: var(--radius-sm);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        .error-message i {
+            color: var(--error-color);
+            font-size: 1rem;
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 1rem;
+            left: 0;
+            right: 0;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 0.5rem;
+        }
+
+        .footer span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .footer .no-gap {
+            gap: 0;
+        }
+
+        .sysdams-text {
+            color: #43d58e;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .period-text {
+            color: #FFD700;
+        }
+
+        .copyright-text {
+            opacity: 0.7;
+            font-weight: 500;
+        }
+
+        .divider {
+            margin: 0 0.5rem;
+            opacity: 0.3;
+        }
+
+        @media (max-width: 768px) {
+            .form-container,
+            .card,
+            .search-history,
+            .error-message {
+                width: calc(100% - 2rem);
+                margin-left: 1rem;
+                margin-right: 1rem;
+            }
+
+            .search-form {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            input[type="text"] {
+                width: 100%;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .vehicle-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-container,
+            .card,
+            .search-history,
+            .error-message {
+                width: calc(100% - 1rem);
+                margin-left: 0.5rem;
+                margin-right: 0.5rem;
+            }
+
+            .card-header h3 {
+                font-size: 1rem;
+            }
+
+            .info-label {
+                font-size: 0.75rem;
+            }
+
+            .info-value {
+                font-size: 1rem;
+            }
+
+            .footer {
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="clear-button" id="clear-history" aria-label="Limpiar historial de búsqueda">
+        <i class="fas fa-trash-alt"></i>
+    </button>
+    <div class="form-container">
+        <form id="search-form" class="search-form" aria-label="Formulario de búsqueda de vehículos">
+            <input id="placa" placeholder="Ingrese la placa" required type="text">
+            <button type="submit">
+                <i class="fas fa-search"></i>
+                Buscar
+            </button>
+        </form>
+    </div>
+
+    <div id="result"></div>
+    <div id="loading" class="loading"></div>
+    <div class="search-history" id="search-history"></div>
+    <footer class="footer">
+        <span class="no-gap">
+            <span class="copyright-text">&copy;</span><span class="sysdams-text">SysDams</span><span class="period-text">.</span>
+        </span>
+        <span>
+            <span class="copyright-text">2025</span>
+            <span class="divider">|</span>
+            <span class="copyright-text">By Killer-Hacker-Official</span>
+        </span>
+    </footer>
+
+    <script>
+        /* Constants */
+        const MAX_HISTORY_ITEMS = 5;
+        const API_URL = 'https://corsproxy.io/?https://registronacional.com/costarica/vehiculos_placa_consultas.php?placa=';
+
+        /* DOM Elements */
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('placa');
+        const loadingElement = document.getElementById('loading');
+        const resultDiv = document.getElementById('result');
+        const searchHistoryContainer = document.getElementById('search-history');
+        const clearButton = document.getElementById('clear-history');
+
+        /* Event Listeners */
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSearchHistory();
+            updateClearButtonVisibility();
+        });
+
+        searchForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            const placa = searchInput.value.trim().toUpperCase();
+            if (placa) {
+                searchVehicle(placa);
+            }
+        });
+
+        clearButton.addEventListener('click', function() {
+            clearSearchHistory();
+            updateClearButtonVisibility();
+        });
+
+        /* Core Functions */
+        async function searchVehicle(placa) {
+            try {
+                showLoading(true);
+                const response = await fetch(`${API_URL}${placa}`);
+                if (!response.ok) throw new Error('Error en la consulta');
+                const data = await response.json();
+                showLoading(false);
+                displayResult(data);
+                saveToHistory(placa);
+                updateClearButtonVisibility();
+            } catch (error) {
+                showLoading(false);
+                showError('Error al consultar el vehículo');
+                console.error('Error:', error);
+            }
+        }
+
+        function displayResult(data) {
+            if (!data?.entities?.length) {
+                showError('No se encontraron resultados para esta placa');
+                return;
+            }
+
+            const vehiculo = data.entities[0].entity;
+            resultDiv.innerHTML = `
+                <div class="card">
+                    <div class="card-header">
+                        <h3>${vehiculo.marca || 'N/A'} ${vehiculo.estilo || 'N/A'}</h3>
+                    </div>
+                    <div class="vehicle-info">
+                        <div class="info-item">
+                            <div class="info-label">
+                                <i class="fas fa-calendar-alt"></i>
+                                Año
+                            </div>
+                            <div class="info-value">${vehiculo.ano || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">
+                                <i class="fas fa-fingerprint"></i>
+                                Chasis
+                            </div>
+                            <div class="info-value">${vehiculo.chasis || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">
+                                <i class="fas fa-palette"></i>
+                                Color
+                            </div>
+                            <div class="info-value">${vehiculo.color || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">
+                                <i class="fas fa-users"></i>
+                                Pasajeros
+                            </div>
+                            <div class="info-value">${vehiculo.pasajeros || 'N/A'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /* History Management */
+        function saveToHistory(placa) {
+            let history = getSearchHistory();
+            history = history.filter(item => item !== placa);
+            history.unshift(placa);
+            history = history.slice(0, MAX_HISTORY_ITEMS);
+            localStorage.setItem('searchHistory', JSON.stringify(history));
+            displaySearchHistory();
+        }
+
+        function getSearchHistory() {
+            return JSON.parse(localStorage.getItem('searchHistory')) || [];
+        }
+
+        function clearSearchHistory() {
+            localStorage.removeItem('searchHistory');
+            displaySearchHistory();
+        }
+
+        function displaySearchHistory() {
+            const history = getSearchHistory();
+            searchHistoryContainer.innerHTML = history.map(placa => `
+                <div class="history-item" onclick="searchVehicle('${placa}')">
+                    <i class="fas fa-history"></i>
+                    ${placa}
+                </div>
+            `).join('');
+        }
+
+        /* UI Helpers */
+        function showLoading(show) {
+            loadingElement.style.display = show ? 'block' : 'none';
+            if (show) resultDiv.innerHTML = '';
+        }
+
+        function showError(message) {
+            resultDiv.innerHTML = `
+                <div class="card">
+                    <div class="info-item">
+                        <div class="info-value" style="color: var(--error-color)">
+                            ${message}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateClearButtonVisibility() {
+            const history = getSearchHistory();
+            clearButton.style.display = history.length ? 'flex' : 'none';
+        }
+
+        function loadSearchHistory() {
+            displaySearchHistory();
+        }
+    </script>
+</body>
+</html>
